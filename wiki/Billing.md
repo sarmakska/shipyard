@@ -65,6 +65,7 @@ The provider is selected by environment in `src/app/api/protected/billing/route.
 `src/lib/billing/service.ts` validates every transition. The allowed moves are:
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0d1117','primaryTextColor':'#f5f7fa','primaryBorderColor':'#38bdf8','lineColor':'#22d3ee','secondaryColor':'#0f172a','tertiaryColor':'#0d1117','fontFamily':'ui-monospace, monospace'}}}%%
 stateDiagram-v2
   [*] --> trialing
   [*] --> active
@@ -99,3 +100,13 @@ So a usage call that would exceed the plan budget fails with a 402 rather than o
 ## Tests
 
 `tests/billing.test.ts` and `tests/stripe-webhook.test.ts` cover subscribe, webhook activation, illegal-transition rejection, mismatched-subscription rejection, audit writes, usage increments, budget enforcement, unlimited usage on `scale`, per-tenant counter isolation, and Stripe webhook signature acceptance and rejection.
+
+## Failure modes to know
+
+- **`BillingError: illegal transition canceled -> active`.** A webhook tried to move a terminal subscription. This is the state machine refusing a replayed or out-of-order event, not a bug. If a customer genuinely resubscribes, that is a new `subscribe` call, not a webhook back into `active`.
+- **`BillingError: event does not match stored subscription`.** The event's `providerSubscriptionId` is not the one stored for this tenant. This stops an event for one subscription mutating another tenant's record. Confirm the webhook is routed to the right organisation.
+- **`webhook signature verification failed`.** The HMAC over `timestamp.payload` did not match. Usual causes: the wrong `STRIPE_WEBHOOK_SECRET`, or a proxy that re-serialised the body so the signed bytes changed. Verify against the raw request body. See [Troubleshooting](Troubleshooting).
+- **`UsageLimitError` (402) sooner than expected.** The plan budget is per UTC month, keyed by `(organisationId, metric, period)`. A counter that looks low may belong to a previous period; the current period started at the month boundary.
+
+---
+SarmaLinux . sarmalinux.com . [shipyard on GitHub](https://github.com/sarmakska/shipyard)

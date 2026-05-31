@@ -55,3 +55,6 @@ There is no update or delete path for audit entries in the repository's scoped A
 ## Tests
 
 `tests/audit.test.ts` proves that signup and invitations write entries with the correct actor, tenant and metadata, and that entries are returned newest first.
+
+---
+SarmaLinux . sarmalinux.com . [shipyard on GitHub](https://github.com/sarmakska/shipyard)

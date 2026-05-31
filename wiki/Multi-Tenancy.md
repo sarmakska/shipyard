@@ -91,6 +91,32 @@ if (!role) {
 
 Each test runs against its own in-memory database, so there is no shared state.
 
+## A worked attack, and why it fails
+
+Suppose an attacker who is a legitimate owner of Globex wants to demote an Acme admin. They know Acme's `userId` (it leaked in a shared support thread) and they call the members route. The route resolves their context from the session, which pins `organisationId` to Globex, then runs:
+
+```ts
+repo.updateScoped(globexOrgId, "memberships", { role: "viewer" }, { userId: acmeUserId });
+```
+
+The repository builds:
+
+```sql
+UPDATE "memberships" SET "role" = @set_role
+WHERE organisationId = @organisationId AND "userId" = @where_userId
+```
+
+with `@organisationId` bound to Globex. The row the attacker wants belongs to Acme, so the two predicates never both hold and the statement reports `0` changes. There is no argument the attacker can pass to remove the first predicate, because the `where` loop skips any `organisationId` key. This is exactly the case asserted in `tests/tenant-isolation.test.ts` under "an update cannot reach across tenants".
+
+## Failure modes to know
+
+- **`selectScoped` returns nothing for data you can see in the database.** Almost always a tenant mismatch: the `organisationId` you passed is not the one the rows belong to. That id comes from the session in `resolveContext`, so check the session's active organisation. This is the guarantee working, not a bug.
+- **`TenantScopeError: table "x" is not tenant-scoped`.** You called a `*Scoped` method on a global table (or vice versa). The split is in `TENANT_SCOPED_TABLES` in `src/db/schema.ts`.
+- **A new table holds tenant data but isolation does not apply.** You added the table but not its name to `TENANT_SCOPED_TABLES`. Without that entry the repository treats it as global and never injects the tenant predicate. Add the name and route all access through the scoped methods.
+
 ## Moving to Postgres
 
 The same predicate-injection model maps onto Postgres row-level security as a defence in depth. You can keep the repository as the application-level guard and additionally enable an RLS policy keyed on a session variable, so even a raw query outside the repository is constrained by the database. See [Deployment](Deployment).
+
+---
+SarmaLinux . sarmalinux.com . [shipyard on GitHub](https://github.com/sarmakska/shipyard)

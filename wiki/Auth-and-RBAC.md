@@ -96,3 +96,12 @@ Authorisation runs on the server inside the route or service, never in the clien
 - `guard` raising `ForbiddenError` for a missing permission and passing for a held one.
 - A viewer being refused `members:invite` while an owner succeeds.
 - `resolveContext` failing closed for a user with no membership in the active tenant.
+
+## Failure modes to know
+
+- **A route returns 401 where you expected 403.** 401 means no valid session (`AuthError`); the cookie is missing or expired. 403 means authenticated but not allowed.
+- **A held permission is still refused.** Check the role-to-permission table above. The role probably does not hold the permission the route asserts; that is the guard working.
+- **A new permission is silently allowed everywhere or nowhere.** Add it to `PERMISSIONS` and to each role's bundle in `ROLE_PERMISSIONS`. A permission absent from every bundle is held by no role, which is the fail-closed default.
+
+---
+SarmaLinux . sarmalinux.com . [shipyard on GitHub](https://github.com/sarmakska/shipyard)

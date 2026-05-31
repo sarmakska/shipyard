@@ -78,3 +78,6 @@ A Redis-backed store implements the same two methods, ideally with the refill-an
 ## Tests
 
 `tests/rate-limit.test.ts` proves the limiter allows up to capacity then blocks, refills at the configured rate over a hand-advanced clock, never refills beyond the ceiling, isolates buckets by key, and rejects invalid configuration.
+
+---
+SarmaLinux . sarmalinux.com . [shipyard on GitHub](https://github.com/sarmakska/shipyard)

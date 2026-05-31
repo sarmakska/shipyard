@@ -58,3 +58,6 @@ SHIPYARD_DB_PATH=shipyard.db pnpm seed
 ```
 
 Then run `pnpm dev` with the same `SHIPYARD_DB_PATH` and sign in as `owner@acme.test` / `password-acme-123`.
+
+---
+SarmaLinux . sarmalinux.com . [shipyard on GitHub](https://github.com/sarmakska/shipyard)

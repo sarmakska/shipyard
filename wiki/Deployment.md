@@ -70,3 +70,6 @@ Switch `BILLING_PROVIDER` to `stripe`, install the Stripe SDK and complete the m
 - [ ] Redis-backed rate-limit store if running more than one instance.
 - [ ] Stripe SDK installed, adapter calls completed, webhook endpoint registered.
 - [ ] Expired-session pruning scheduled.
+
+---
+SarmaLinux . sarmalinux.com . [shipyard on GitHub](https://github.com/sarmakska/shipyard)
