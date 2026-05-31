@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next.js
+.next/
+out/
+dist/
+build/
+
+# test artefacts
+coverage/
+
+# local databases
+*.db
+*.db-shm
+*.db-wal
+
+# environment
+.env
+.env*.local
+
+# misc
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
