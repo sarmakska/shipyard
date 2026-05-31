@@ -24,17 +24,48 @@ A request is gated at the edge, resolved to an authenticated user and an active 
 
 ## Where to go next
 
+The wiki is exhaustive on purpose. Start with Architecture, then dig into whichever subsystem you are touching.
+
+**Orientation**
+
 | Page | What it answers |
 | --- | --- |
 | [Architecture](Architecture) | How a request flows end to end, the layering, and the error-to-status map. |
+| [Data Model](Data-Model) | Every table, its columns, indexes, on-disk encodings, and the tenant line. |
+| [Design Decisions](Design-Decisions) | The choices and the alternatives I rejected, in one place. |
+
+**Subsystems**
+
+| Page | What it answers |
+| --- | --- |
 | [Multi-Tenancy](Multi-Tenancy) | The isolation guarantee, the single chokepoint that enforces it, and the test that proves it. |
 | [Auth and RBAC](Auth-and-RBAC) | Session handling, scrypt password hashing, and the permission model. |
 | [Billing](Billing) | Plans, the subscription state machine, usage budgets, and the provider seam. |
 | [Audit Log](Audit-Log) | What is recorded, how to add an action, and why it is append-only. |
 | [Rate Limiting](Rate-Limiting) | The token-bucket algorithm, configuration, and scaling across instances. |
+
+**Reference**
+
+| Page | What it answers |
+| --- | --- |
+| [Repository Reference](Repository-Reference) | Every repository method, the SQL it builds, and why the tenant predicate cannot be removed. |
+| [API Reference](API-Reference) | Each HTTP route: method, body, response, status codes, permission. |
+| [Configuration](Configuration) | Every environment variable and code constant, with defaults and tuning. |
+
+**Operating and building on it**
+
+| Page | What it answers |
+| --- | --- |
 | [Deployment](Deployment) | The production path, including the Postgres swap and row-level security. |
-| [Roadmap](Roadmap) | What I will add, what I will not, and the known limitations. |
+| [Performance](Performance) | Real benchmarks from an M3 Pro: tests, scrypt, HMAC, the limiter. |
+| [Security Model](Security-Model) | The threat model, trust boundaries, and what is out of scope. |
+| [Testing Strategy](Testing-Strategy) | How the suite is structured and how to test a new guarantee. |
+| [Contributing](Contributing) | Layering rules and the checklist for writing an extension. |
+| [Examples and Recipes](Examples-and-Recipes) | Copy-pasteable tasks against the real code. |
 | [Troubleshooting](Troubleshooting) | Concrete symptoms and their fixes. |
+| [Comparisons](Comparisons) | How shipyard relates to the obvious alternatives. |
+| [FAQ](FAQ) | Short answers, each linking to the detail. |
+| [Roadmap](Roadmap) | What I will add, what I will not, and the known limitations. |
 
 ## Quickstart
 

@@ -65,7 +65,7 @@ Only now does business logic run. Services (`MembersService`, `BillingService`, 
 | Domain | `src/lib/{auth,members,audit,rbac}.ts`, `src/lib/billing/**` | Business rules, state machines |
 | Data | `src/db/**` | Schema, migrations, tenant-scoped repository |
 
-The dependency direction is strictly downward. The data layer knows nothing about HTTP, and the domain layer knows nothing about Next.js, which is what keeps the domain unit-testable without a server.
+The dependency direction is strictly downward. The data layer knows nothing about HTTP, and the domain layer knows nothing about Next.js, which is what keeps the domain unit-testable without a server. The tables each layer touches are catalogued in [Data Model](Data-Model); the data layer's full surface is in [Repository Reference](Repository-Reference).
 
 ## Why node:sqlite
 
