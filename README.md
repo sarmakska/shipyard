@@ -1,5 +1,3 @@
-<p align="center"><img src=".github/brand/banner.svg" alt="shipyard by sarmalinux" width="100%"></p>
-
 <p align="center">A production-grade multi-tenant SaaS starter: organisations, RBAC, billing, audit log and rate limiting done properly.</p>
 
 <p align="center">
