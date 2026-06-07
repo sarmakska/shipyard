@@ -22,9 +22,13 @@ export interface RateLimitConfig {
 
 export interface RateLimitResult {
   allowed: boolean;
+  /** The burst ceiling, echoed so callers can build standard headers. */
+  limit: number;
   remaining: number;
   /** Milliseconds until the next token is available, when blocked. */
   retryAfterMs: number;
+  /** Milliseconds until the bucket is back at full capacity. */
+  resetMs: number;
 }
 
 interface Bucket {
@@ -73,20 +77,33 @@ export class RateLimiter {
     return { tokens: refilled, lastRefill: now };
   }
 
+  /**
+   * Milliseconds until a bucket holding `tokens` refills to full capacity.
+   * Zero when the bucket is already full. Used for the X-RateLimit-Reset header.
+   */
+  private resetMs(tokens: number): number {
+    const missing = this.config.capacity - tokens;
+    if (missing <= 0) return 0;
+    return Math.ceil((missing / this.config.refillPerSecond) * 1000);
+  }
+
   /** Consume one token for `key`. Returns whether the request is allowed. */
   consume(key: string, cost = 1): RateLimitResult {
     const existing =
       this.store.get(key) ??
       ({ tokens: this.config.capacity, lastRefill: this.now() } as Bucket);
     const bucket = this.refill(existing);
+    const limit = this.config.capacity;
 
     if (bucket.tokens >= cost) {
       bucket.tokens -= cost;
       this.store.set(key, bucket);
       return {
         allowed: true,
+        limit,
         remaining: Math.floor(bucket.tokens),
         retryAfterMs: 0,
+        resetMs: this.resetMs(bucket.tokens),
       };
     }
 
@@ -95,8 +112,32 @@ export class RateLimiter {
     const retryAfterMs = Math.ceil(
       (deficit / this.config.refillPerSecond) * 1000,
     );
-    return { allowed: false, remaining: Math.floor(bucket.tokens), retryAfterMs };
+    return {
+      allowed: false,
+      limit,
+      remaining: Math.floor(bucket.tokens),
+      retryAfterMs,
+      resetMs: this.resetMs(bucket.tokens),
+    };
   }
+}
+
+/**
+ * Build the standard rate-limit response headers from a limiter result. These
+ * follow the widely-adopted X-RateLimit-* convention so any HTTP client can
+ * self-throttle ahead of a 429 rather than discovering the limit by hitting it.
+ * Reset is expressed in whole seconds, matching the Retry-After unit.
+ */
+export function rateLimitHeaders(result: RateLimitResult): Record<string, string> {
+  const headers: Record<string, string> = {
+    "X-RateLimit-Limit": String(result.limit),
+    "X-RateLimit-Remaining": String(result.remaining),
+    "X-RateLimit-Reset": String(Math.ceil(result.resetMs / 1000)),
+  };
+  if (!result.allowed) {
+    headers["Retry-After"] = String(Math.ceil(result.retryAfterMs / 1000));
+  }
+  return headers;
 }
 
 /** Default budgets keyed by a logical route group. Tune per deployment. */

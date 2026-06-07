@@ -5,7 +5,12 @@ import { SESSION_COOKIE, AuthError } from "./auth";
 import { resolveContext, TenantResolutionError } from "./context";
 import { ForbiddenError, type Permission } from "./rbac";
 import { UsageLimitError } from "./billing/service";
-import { RateLimiter, RATE_LIMITS, type RateLimitConfig } from "./rate-limit";
+import {
+  RateLimiter,
+  RATE_LIMITS,
+  rateLimitHeaders,
+  type RateLimitConfig,
+} from "./rate-limit";
 import type { RequestContext } from "./context";
 
 /**
@@ -48,20 +53,21 @@ export async function withGuard(
     const group = options.rateLimitGroup ?? "api";
     const limiter = limiterFor(group, RATE_LIMITS[group]);
     const result = limiter.consume(`${ctx.organisationId}:${group}`);
+    const limitHeaders = rateLimitHeaders(result);
     if (!result.allowed) {
       return NextResponse.json(
         { error: "rate_limited" },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(Math.ceil(result.retryAfterMs / 1000)),
-            "X-RateLimit-Remaining": String(result.remaining),
-          },
-        },
+        { status: 429, headers: limitHeaders },
       );
     }
 
-    return await handler(ctx, req);
+    // Echo the budget on the successful response too, so a client can pace
+    // itself before it ever sees a 429.
+    const response = await handler(ctx, req);
+    for (const [name, value] of Object.entries(limitHeaders)) {
+      response.headers.set(name, value);
+    }
+    return response;
   } catch (error) {
     return errorResponse(error);
   }
