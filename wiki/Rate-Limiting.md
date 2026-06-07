@@ -22,7 +22,7 @@ private refill(bucket: Bucket): Bucket {
 }
 ```
 
-`capacity` is the burst ceiling and `refillPerSecond` is the sustained rate. When a request is blocked, the result includes `retryAfterMs`, computed from the token deficit and the refill rate, which the route surfaces as a `Retry-After` header.
+`capacity` is the burst ceiling and `refillPerSecond` is the sustained rate. Every `consume` returns the full budget picture: `limit` (the ceiling), `remaining` (tokens left), `resetMs` (time until the bucket is full again) and, when blocked, `retryAfterMs` (time until the next single token). A blocked request additionally carries `allowed: false`.
 
 ### Injectable clock
 
@@ -49,18 +49,36 @@ export const RATE_LIMITS = {
 
 ```ts
 const result = limiter.consume(`${ctx.organisationId}:${group}`);
+const limitHeaders = rateLimitHeaders(result);
 if (!result.allowed) {
   return NextResponse.json({ error: "rate_limited" }, {
     status: 429,
-    headers: {
-      "Retry-After": String(Math.ceil(result.retryAfterMs / 1000)),
-      "X-RateLimit-Remaining": String(result.remaining),
-    },
+    headers: limitHeaders,
   });
 }
+
+// Echo the budget on the successful response too.
+const response = await handler(ctx, req);
+for (const [name, value] of Object.entries(limitHeaders)) {
+  response.headers.set(name, value);
+}
+return response;
 ```
 
 Unauthenticated routes (signup, login) limit by IP instead, because there is no tenant yet.
+
+## Standard headers on every response
+
+`rateLimitHeaders` builds the widely-adopted `X-RateLimit-*` set so a client can pace itself ahead of a 429 rather than discovering the limit by hitting it. The headers ride on the successful response, not only on the rejection:
+
+| Header | Meaning |
+| --- | --- |
+| `X-RateLimit-Limit` | the burst ceiling for the route group |
+| `X-RateLimit-Remaining` | tokens left in this tenant's bucket |
+| `X-RateLimit-Reset` | whole seconds until the bucket is back at full capacity |
+| `Retry-After` | whole seconds until the next token; sent only on a `429` |
+
+`Reset` and `Retry-After` are both expressed in whole seconds and always round up, so a client that waits the advertised time never arrives a fraction of a second early and bounces again.
 
 ## Scaling across instances
 
@@ -77,7 +95,7 @@ A Redis-backed store implements the same two methods, ideally with the refill-an
 
 ## Tests
 
-`tests/rate-limit.test.ts` proves the limiter allows up to capacity then blocks, refills at the configured rate over a hand-advanced clock, never refills beyond the ceiling, isolates buckets by key, and rejects invalid configuration.
+`tests/rate-limit.test.ts` proves the limiter allows up to capacity then blocks, refills at the configured rate over a hand-advanced clock, never refills beyond the ceiling, isolates buckets by key, rejects invalid configuration, reports a `resetMs` that grows as the bucket drains, and that `rateLimitHeaders` emits the standard set with `Retry-After` only when blocked.
 
 ---
 SarmaLinux . sarmalinux.com . [shipyard on GitHub](https://github.com/sarmakska/shipyard)

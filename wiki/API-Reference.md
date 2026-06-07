@@ -9,6 +9,7 @@ Every protected route is wrapped by `withGuard` in `src/lib/http.ts`, which reso
 - Bodies are JSON. Responses are JSON.
 - The session is an httpOnly cookie named `shipyard_session`. The auth routes set it; protected routes read it. You do not pass it in a header.
 - Errors are `{ "error": "<message>" }` with the status set by `errorResponse`.
+- Every protected response carries the rate-limit budget: `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (whole seconds). A `429` adds `Retry-After`. See [Rate Limiting](Rate-Limiting) for the header semantics.
 
 ### Status codes
 

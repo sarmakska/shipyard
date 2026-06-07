@@ -48,7 +48,7 @@ So I built the spine once, with the isolation and authorisation guarantees pinne
 - **Sessions you can leak.** Opaque random tokens, only a SHA-256 hash stored (`src/lib/auth.ts`). A database dump does not hand out live sessions. The plaintext token is the cookie; OAuth slots in at `createSession`.
 - **Permission-based RBAC.** Routes assert a permission (`billing:manage`), not a role. Roles are bundles of permissions in `src/lib/rbac.ts`, and a missing check fails closed by throwing.
 - **An append-only audit log.** Actor, tenant, action and JSON metadata for every privileged operation (`src/lib/audit.ts`), written through the scoped repository so an entry cannot be misattributed.
-- **A token-bucket rate limiter** with an injected clock and a pluggable store (`src/lib/rate-limit.ts`), keyed by tenant and route.
+- **A token-bucket rate limiter** with an injected clock and a pluggable store (`src/lib/rate-limit.ts`), keyed by tenant and route. Every protected response carries the standard `X-RateLimit-Limit`, `-Remaining` and `-Reset` headers, so a client paces itself before it ever sees a 429.
 - **A billing scaffold** with a real subscription state machine, usage budgets that return 402 instead of overrunning, and a Stripe-shaped adapter whose webhook signature check is the real HMAC scheme (`src/lib/billing/`).
 
 It is Next.js 16 and TypeScript throughout. The data layer sits behind a typed repository on the built-in `node:sqlite`, and the same interface is what you reimplement against Postgres for production.
@@ -111,11 +111,11 @@ Real numbers from my machine, an **Apple M3 Pro running Node v25.9.0**, not esti
 ```text
 $ pnpm test
  Test Files  6 passed (6)
-      Tests  29 passed (29)
-   Duration  468ms
+      Tests  33 passed (33)
+   Duration  502ms
 
 $ /usr/bin/time -p pnpm test   # whole command, including process spin-up
-real 1.04
+real 1.18
 ```
 
 Six fresh in-memory databases, one per suite, so there is no shared state to leak between cases. What each suite proves:
@@ -125,7 +125,7 @@ Six fresh in-memory databases, one per suite, so there is no shared state to lea
 | `tenant-isolation` | Cross-tenant reads return nothing; a smuggled tenant id is overwritten; cross-tenant updates change zero rows. |
 | `rbac` | A viewer is refused privileged actions; a user with no membership in the active tenant fails closed. |
 | `audit` | Signup and invitations write entries with the correct actor, tenant and metadata. |
-| `rate-limit` | The bucket allows up to capacity, blocks past it, refills at the configured rate and never exceeds the ceiling. |
+| `rate-limit` | The bucket allows up to capacity, blocks past it, refills at the configured rate, never exceeds the ceiling, and reports a budget that maps to standard `X-RateLimit-*` headers. |
 | `billing` | Subscribe and webhook transitions are validated; illegal transitions are rejected; plan budgets stop usage overrun. |
 | `stripe-webhook` | A correctly signed payload is accepted and mapped; a tampered or unsigned payload is rejected. |
 
